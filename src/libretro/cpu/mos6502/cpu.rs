@@ -27,7 +27,7 @@ pub struct MOS6502 {
     /// Instruction count
     pub steps: usize,
 
-    current: Option<Instruction>,
+    pub current: Option<Instruction>,
 }
 
 impl Debug for MOS6502 {
@@ -66,7 +66,7 @@ impl MOS6502 {
             a: 0,
             x: 0,
             y: 0,
-            sp: 0xFD, // Stack pointer starts at $01FD
+            sp: 0x00, // Stack pointer starts at $01FD
             pc: 0x0000,
             status: 0x00,
             cycles: 0,

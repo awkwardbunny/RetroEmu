@@ -1,6 +1,6 @@
 use crate::cpu::mos6502::AddressingMode;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Instr {
     LDA, LDX, LDY, STA, STX, STY,
     TAX, TAY, TSX, TXA, TXS, TYA,
@@ -21,6 +21,7 @@ impl std::fmt::Display for Instr {
     }
 }
 
+#[derive(PartialEq)]
 pub struct Instruction {
     pub cycles: usize,
     pub pc: u16,

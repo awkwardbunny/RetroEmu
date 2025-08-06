@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 
 /// Addressing modes for the 6502 CPU
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum AddressingMode {
     Implied(),
     Accumulator(),
