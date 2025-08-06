@@ -1,9 +1,9 @@
-use crate::memory::Memory;
-use log::{error, trace};
-use std::fmt::{Debug, Formatter};
 use crate::cpu::mos6502::AddressingMode;
 use crate::cpu::mos6502::instruction::{Instr, Instruction};
+use crate::memory::Memory;
 use bitmatch::bitmatch;
+use log::{error, trace};
+use std::fmt::{Debug, Formatter};
 
 /// 6502 CPU Emulator
 ///
@@ -189,7 +189,7 @@ impl MOS6502 {
         loop {
             if let Some(i) = self.cycle(mem) {
                 self.steps += 1;
-                return i
+                return i;
             }
         }
     }
@@ -246,7 +246,10 @@ impl MOS6502 {
                     3 => AddressingMode::Absolute(self.fetch_word(mem)),
                     5 => AddressingMode::ZeroPageX(self.fetch(mem)),
                     7 => AddressingMode::AbsoluteX(self.fetch_word(mem)),
-                    0 | 4 | 6 => AddressingMode::Implied(),
+                    0 | 4 | 6 => {
+                        println!("{:04X}", pc);
+                        unreachable!()
+                    }
                     _ => unreachable!(),
                 };
                 am.add_to_vec(&mut bytes);
@@ -258,19 +261,19 @@ impl MOS6502 {
                     0 => {
                         let x = self.fetch(mem);
                         (AddressingMode::ZeroPage(x), x as usize, 5)
-                    },
+                    }
                     1 => {
                         let x = self.fetch_word(mem);
                         (AddressingMode::Absolute(x), x as usize, 6)
-                    },
+                    }
                     2 => {
                         let x = self.fetch(mem);
                         (AddressingMode::ZeroPageX(x), x as usize, 6)
-                    },
+                    }
                     3 => {
                         let x = self.fetch_word(mem);
                         (AddressingMode::AbsoluteX(x), x as usize, 7)
-                    },
+                    }
                     _ => unreachable!(),
                 };
                 let (i, result) = match x {
@@ -289,47 +292,55 @@ impl MOS6502 {
                     0 => {
                         let x = self.fetch(mem);
                         (AddressingMode::ZeroPage(x), x as usize, 3)
-                    },
+                    }
                     1 => {
                         let x = self.fetch_word(mem);
                         (AddressingMode::Absolute(x), x as usize, 4)
-                    },
+                    }
                     2 => {
                         let x = self.fetch(mem);
                         if x & 1 == 1 {
-                            (AddressingMode::ZeroPageY(x), x.wrapping_add(self.y) as usize, 4)
+                            (
+                                AddressingMode::ZeroPageY(x),
+                                x.wrapping_add(self.y) as usize,
+                                4,
+                            )
                         } else {
-                            (AddressingMode::ZeroPageX(x), x.wrapping_add(self.x) as usize, 4)
+                            (
+                                AddressingMode::ZeroPageX(x),
+                                x.wrapping_add(self.x) as usize,
+                                4,
+                            )
                         }
-                    },
+                    }
                     3 => (AddressingMode::Implied(), 0, 1),
                     _ => unreachable!(),
                 };
 
                 if let AddressingMode::Implied() = am {
-                    return Instruction::new(pc, &bytes, Instr::UNK, AddressingMode::Implied(), 0)
+                    return Instruction::new(pc, &bytes, Instr::UNK, AddressingMode::Implied(), 0);
                 }
 
                 let i = match x {
                     0 => {
                         mem.write(addr, self.y);
                         Instr::STY
-                    },
+                    }
                     1 => {
                         mem.write(addr, self.x);
                         Instr::STX
-                    },
+                    }
                     2 => {
                         self.y = mem.read(addr);
                         self.update_zn(self.y);
                         Instr::LDY
-                    },
+                    }
                     3 => {
                         self.x = mem.read(addr);
                         self.update_zn(self.x);
                         Instr::LDX
-                    },
-                    _ => unreachable!()
+                    }
+                    _ => unreachable!(),
                 };
 
                 am.add_to_vec(&mut bytes);
@@ -540,7 +551,7 @@ impl MOS6502 {
                 let addr = self.fetch_word(mem);
                 let am = AddressingMode::Absolute(addr);
 
-                self.push_word(mem, self.pc-1);
+                self.push_word(mem, self.pc - 1);
                 self.pc = addr;
 
                 am.add_to_vec(&mut bytes);
@@ -619,7 +630,7 @@ impl MOS6502 {
             _ => {
                 error!("Unknown opcode {:04X}: {:02X}", pc, opcode);
                 Instruction::new(pc, &bytes, Instr::UNK, AddressingMode::Implied(), 0)
-            },
+            }
         }
     }
 
@@ -627,34 +638,46 @@ impl MOS6502 {
         let (data, mut c) = match i {
             Instr::STA => (self.a, 0),
             _ => match am {
-                AddressingMode::Immediate(d)  => (*d, 2),
-                AddressingMode::ZeroPage(a)  => (mem.read(*a as usize), 3),
+                AddressingMode::Immediate(d) => (*d, 2),
+                AddressingMode::ZeroPage(a) => (mem.read(*a as usize), 3),
                 AddressingMode::ZeroPageX(a) => (mem.read(a.wrapping_add(self.x) as usize), 4),
                 AddressingMode::Absolute(a) => (mem.read(*a as usize), 4),
                 AddressingMode::AbsoluteX(a) => {
                     mem.read(*a as usize); // Side-effect
                     let addr = a.wrapping_add(self.x as u16);
-                    (mem.read(addr as usize), if addr >> 8 != a >> 8 { 5 } else { 4 })
-                },
+                    (
+                        mem.read(addr as usize),
+                        if addr >> 8 != a >> 8 { 5 } else { 4 },
+                    )
+                }
                 AddressingMode::AbsoluteY(a) => {
                     mem.read(*a as usize); // Side-effect
                     let addr = a.wrapping_add(self.y as u16);
-                    (mem.read(addr as usize), if addr >> 8 != a >> 8 { 5 } else { 4 })
-                },
-                AddressingMode::IndirectX(a) => (mem.read(mem.read_word_zero(a.wrapping_add(self.x)) as usize), 6),
+                    (
+                        mem.read(addr as usize),
+                        if addr >> 8 != a >> 8 { 5 } else { 4 },
+                    )
+                }
+                AddressingMode::IndirectX(a) => (
+                    mem.read(mem.read_word_zero(a.wrapping_add(self.x)) as usize),
+                    6,
+                ),
                 AddressingMode::IndirectY(a) => {
                     let addr1 = mem.read_word_zero(*a);
                     let addr2 = addr1 + self.y as u16;
-                    (mem.read(addr2 as usize), if addr2 >> 8 != addr1 >> 8 { 6 } else { 5 })
-                },
+                    (
+                        mem.read(addr2 as usize),
+                        if addr2 >> 8 != addr1 >> 8 { 6 } else { 5 },
+                    )
+                }
                 _ => unreachable!(),
-            }
+            },
         };
         match i {
             Instr::ORA => {
                 self.a |= data;
                 self.update_zn(self.a);
-            },
+            }
             Instr::AND => {
                 self.a &= data;
                 self.update_zn(self.a);
@@ -671,40 +694,38 @@ impl MOS6502 {
                 self.set_flag(Flag::V, overflow);
                 self.update_zn(self.a);
             }
-            Instr::STA => {
-                match am {
-                    AddressingMode::Immediate(_) => {}
-                    AddressingMode::ZeroPage(a) => {
-                        c = 3;
-                        mem.write(*a as usize, data)
-                    },
-                    AddressingMode::ZeroPageX(a) => {
-                        c = 4;
-                        mem.write(a.wrapping_add(self.x) as usize, data)
-                    },
-                    AddressingMode::Absolute(a) => {
-                        c = 4;
-                        mem.write(*a as usize, data)
-                    },
-                    AddressingMode::AbsoluteX(a) => {
-                        c = 5;
-                        mem.write(a.wrapping_add(self.x as u16) as usize, data)
-                    },
-                    AddressingMode::AbsoluteY(a) => {
-                        c = 5;
-                        mem.write(a.wrapping_add(self.y as u16) as usize, data)
-                    },
-                    AddressingMode::IndirectX(a) => {
-                        c = 6;
-                        mem.write(mem.read_word_zero(a.wrapping_add(self.x)) as usize, data)
-                    },
-                    AddressingMode::IndirectY(a) => {
-                        c = 6;
-                        mem.write((mem.read_word_zero(*a) + self.y as u16) as usize, data)
-                    },
-                    _ => unreachable!(),
+            Instr::STA => match am {
+                AddressingMode::Immediate(_) => {}
+                AddressingMode::ZeroPage(a) => {
+                    c = 3;
+                    mem.write(*a as usize, data)
                 }
-            }
+                AddressingMode::ZeroPageX(a) => {
+                    c = 4;
+                    mem.write(a.wrapping_add(self.x) as usize, data)
+                }
+                AddressingMode::Absolute(a) => {
+                    c = 4;
+                    mem.write(*a as usize, data)
+                }
+                AddressingMode::AbsoluteX(a) => {
+                    c = 5;
+                    mem.write(a.wrapping_add(self.x as u16) as usize, data)
+                }
+                AddressingMode::AbsoluteY(a) => {
+                    c = 5;
+                    mem.write(a.wrapping_add(self.y as u16) as usize, data)
+                }
+                AddressingMode::IndirectX(a) => {
+                    c = 6;
+                    mem.write(mem.read_word_zero(a.wrapping_add(self.x)) as usize, data)
+                }
+                AddressingMode::IndirectY(a) => {
+                    c = 6;
+                    mem.write((mem.read_word_zero(*a) + self.y as u16) as usize, data)
+                }
+                _ => unreachable!(),
+            },
             Instr::LDA => {
                 self.a = data;
                 self.update_zn(self.a);
@@ -718,15 +739,108 @@ impl MOS6502 {
                 self.set_flag(Flag::N, result & 0x80 != 0);
             }
             Instr::SBC => {
-                todo!();
+                let x = if self.get_flag(Flag::C) {
+                    data
+                } else {
+                    data + 1
+                };
+                let (diff, carry) = self.a.overflowing_sub(x);
+                let (_, overflow) = (self.a as i8).overflowing_add(x as i8);
+                self.a = diff;
+                self.set_flag(Flag::C, carry);
+                self.set_flag(Flag::V, overflow);
+                self.update_zn(self.a);
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
         c
     }
 
-    fn instr_shift(&mut self, _mem: &mut dyn Memory, _i: &Instr, _am: &AddressingMode) -> usize {
-        todo!();
+    fn instr_shift(&mut self, mem: &mut dyn Memory, i: &Instr, am: &AddressingMode) -> usize {
+        if let AddressingMode::Accumulator() = am {
+            match i {
+                Instr::ASL => {
+                    self.set_flag(Flag::C, self.a & 0x80 != 0);
+                    self.a <<= 1;
+                    self.update_zn(self.a);
+                    return 2;
+                }
+                Instr::ROL => {
+                    let is_carry = self.a & 0x80 != 0;
+                    self.a <<= 1;
+                    if self.get_flag(Flag::C) {
+                        self.a += 1;
+                    }
+                    self.set_flag(Flag::C, is_carry);
+                    self.update_zn(self.a);
+                    return 2;
+                }
+                Instr::LSR => {
+                    let is_carry = self.a & 0x80 != 0;
+                    self.a >>= 1;
+                    self.set_flag(Flag::C, is_carry);
+                    self.update_zn(self.a);
+                    return 2;
+                }
+                Instr::ROR => {
+                    let is_carry = self.a & 0x01 != 0;
+                    self.a >>= 1;
+                    if self.get_flag(Flag::C) {
+                        self.a += 0x80;
+                    }
+                    self.set_flag(Flag::C, is_carry);
+                    self.update_zn(self.a);
+                    return 2;
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        let (addr, c) = match am {
+            AddressingMode::ZeroPage(a) => (*a as usize, 5),
+            AddressingMode::Absolute(a) => (*a as usize, 6),
+            AddressingMode::ZeroPageX(a) => (a.wrapping_add(self.x) as usize, 6),
+            AddressingMode::AbsoluteX(a) => (a.wrapping_add(self.x as u16) as usize, 7),
+            _ => unreachable!(),
+        };
+
+        let mut data = mem.read(addr);
+
+        match i {
+            Instr::ASL => {
+                self.set_flag(Flag::C, data & 0x80 != 0);
+                data <<= 1;
+                self.update_zn(data);
+            }
+            Instr::ROL => {
+                let is_carry = data & 0x80 != 0;
+                data <<= 1;
+                if self.get_flag(Flag::C) {
+                    data += 1;
+                }
+                self.set_flag(Flag::C, is_carry);
+                self.update_zn(data);
+            }
+            Instr::LSR => {
+                let is_carry = data & 0x80 != 0;
+                data >>= 1;
+                self.set_flag(Flag::C, is_carry);
+                self.update_zn(data);
+            }
+            Instr::ROR => {
+                let is_carry = data & 0x01 != 0;
+                data >>= 1;
+                if self.get_flag(Flag::C) {
+                    data += 0x80;
+                }
+                self.set_flag(Flag::C, is_carry);
+                self.update_zn(data);
+            }
+            _ => unreachable!(),
+        }
+
+        mem.write(addr, data);
+        c
     }
 }
 
