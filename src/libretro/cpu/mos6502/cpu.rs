@@ -259,20 +259,20 @@ impl MOS6502 {
             "11xy_y110" => {
                 let (am, addr, c) = match y {
                     0 => {
-                        let x = self.fetch(mem);
-                        (AddressingMode::ZeroPage(x), x as usize, 5)
+                        let addr = self.fetch(mem);
+                        (AddressingMode::ZeroPage(addr), addr as usize, 5)
                     }
                     1 => {
-                        let x = self.fetch_word(mem);
-                        (AddressingMode::Absolute(x), x as usize, 6)
+                        let addr = self.fetch_word(mem);
+                        (AddressingMode::Absolute(addr), addr as usize, 6)
                     }
                     2 => {
-                        let x = self.fetch(mem);
-                        (AddressingMode::ZeroPageX(x), x as usize, 6)
+                        let addr = self.fetch(mem);
+                        (AddressingMode::ZeroPageX(addr), addr as usize, 6)
                     }
                     3 => {
-                        let x = self.fetch_word(mem);
-                        (AddressingMode::AbsoluteX(x), x as usize, 7)
+                        let addr = self.fetch_word(mem);
+                        (AddressingMode::AbsoluteX(addr), addr as usize, 7)
                     }
                     _ => unreachable!(),
                 };
@@ -290,30 +290,53 @@ impl MOS6502 {
             "10xy_y1x0" => {
                 let (am, addr, c) = match y {
                     0 => {
-                        let x = self.fetch(mem);
-                        (AddressingMode::ZeroPage(x), x as usize, 3)
+                        let addr = self.fetch(mem);
+                        (AddressingMode::ZeroPage(addr), addr as usize, 3)
                     }
                     1 => {
-                        let x = self.fetch_word(mem);
-                        (AddressingMode::Absolute(x), x as usize, 4)
+                        let addr = self.fetch_word(mem);
+                        (AddressingMode::Absolute(addr), addr as usize, 4)
                     }
                     2 => {
-                        let x = self.fetch(mem);
+                        let addr = self.fetch(mem);
                         if x & 1 == 1 {
                             (
-                                AddressingMode::ZeroPageY(x),
-                                x.wrapping_add(self.y) as usize,
+                                AddressingMode::ZeroPageY(addr),
+                                addr.wrapping_add(self.y) as usize,
                                 4,
                             )
                         } else {
                             (
-                                AddressingMode::ZeroPageX(x),
-                                x.wrapping_add(self.x) as usize,
+                                AddressingMode::ZeroPageX(addr),
+                                addr.wrapping_add(self.x) as usize,
                                 4,
                             )
                         }
                     }
-                    3 => (AddressingMode::Implied(), 0, 1),
+                    3 => {
+                        let addr = self.fetch_word(mem);
+                        match x {
+                            2 => {
+                                let newaddr = addr.wrapping_add(self.x as u16);
+                                let cycles = if addr >> 8 != newaddr >> 8 { 5 } else { 4 };
+                                (
+                                    AddressingMode::AbsoluteX(addr),
+                                    newaddr as usize,
+                                    cycles,
+                                )
+                            },
+                            3 => {
+                                let newaddr = addr.wrapping_add(self.y as u16);
+                                let cycles = if addr >> 8 != newaddr >> 8 { 5 } else { 4 };
+                                (
+                                    AddressingMode::AbsoluteY(addr),
+                                    newaddr as usize,
+                                    cycles,
+                                )
+                            },
+                            _ => (AddressingMode::Implied(), 0, 1),
+                        }
+                    }
                     _ => unreachable!(),
                 };
 

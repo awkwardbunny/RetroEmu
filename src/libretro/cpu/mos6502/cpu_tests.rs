@@ -149,4 +149,54 @@ mod tests {
         assert_eq!(instr(Instr::LDA, AddressingMode::IndirectY(0x10), 6), i); // Decode check
         assert_eq!(cpu.a, 0xFA); // Behavior check
     }
+
+    #[rstest]
+    fn instr_ldx_imm(mut cpu: MOS6502, mut mem: RAM) {
+        let i = exec(&mut cpu, &mut mem, &[0xA2, 0xFF]);
+        assert_eq!(instr(Instr::LDX, AddressingMode::Immediate(0xFF), 2), i); // Decode check
+        assert_eq!(cpu.x, 0xFF); // Behavior check
+    }
+
+    #[rstest]
+    fn instr_ldx_abs(mut cpu: MOS6502, mut mem: RAM) {
+        mem.write(0xBEEF, 0xFA);
+        let i = exec(&mut cpu, &mut mem, &[0xAE, 0xEF, 0xBE]);
+        assert_eq!(instr(Instr::LDX, AddressingMode::Absolute(0xBEEF), 4), i); // Decode check
+        assert_eq!(cpu.x, 0xFA); // Behavior check
+    }
+
+    #[rstest]
+    fn instr_ldx_abs_y(mut cpu: MOS6502, mut mem: RAM) {
+        mem.write(0xBEEF, 0xFA);
+        cpu.y = 0xEF;
+        let i = exec(&mut cpu, &mut mem, &[0xBE, 0x00, 0xBE]);
+        assert_eq!(instr(Instr::LDX, AddressingMode::AbsoluteY(0xBE00), 4), i); // Decode check
+        assert_eq!(cpu.x, 0xFA); // Behavior check
+    }
+
+    #[rstest]
+    fn instr_ldx_abs_y_page_boundary(mut cpu: MOS6502, mut mem: RAM) {
+        mem.write(0xBEEF, 0xFA);
+        cpu.y = 0xF0;
+        let i = exec(&mut cpu, &mut mem, &[0xBE, 0xFF, 0xBD]);
+        assert_eq!(instr(Instr::LDX, AddressingMode::AbsoluteY(0xBDFF), 5), i); // Decode check
+        assert_eq!(cpu.x, 0xFA); // Behavior check
+    }
+
+    #[rstest]
+    fn instr_ldx_zero(mut cpu: MOS6502, mut mem: RAM) {
+        mem.write(0xEF, 0xFA);
+        let i = exec(&mut cpu, &mut mem, &[0xA6, 0xEF]);
+        assert_eq!(instr(Instr::LDX, AddressingMode::ZeroPage(0xEF), 3), i); // Decode check
+        assert_eq!(cpu.x, 0xFA); // Behavior check
+    }
+
+    #[rstest]
+    fn instr_ldx_zero_y(mut cpu: MOS6502, mut mem: RAM) {
+        mem.write(0x20, 0xFA);
+        cpu.y = 0x10;
+        let i = exec(&mut cpu, &mut mem, &[0xB6, 0x10]);
+        assert_eq!(instr(Instr::LDX, AddressingMode::ZeroPageY(0x10), 4), i); // Decode check
+        assert_eq!(cpu.x, 0xFA); // Behavior check
+    }
 }
