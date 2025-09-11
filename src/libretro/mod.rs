@@ -14,3 +14,18 @@ pub mod machine;
 // pub use cpu::MOS6502;
 // pub use memory::Memory;
 // pub use debug::Debugger;
+
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser, Debug)]
+pub struct CommandParser {
+    #[clap(subcommand)]
+    pub cmd: Command,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    Step,
+    Run,
+}

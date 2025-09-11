@@ -1,11 +1,11 @@
+#[cfg(test)]
+mod tests {
 use crate::memory::{RAM, Endian, Memory};
 use crate::cpu::mos6502::*;
 use rstest::*;
 
-#[cfg(test)]
-mod tests {
     use crate::cpu::mos6502::instruction::{Instr, Instruction};
-    use super::*;
+    // use super::*;
 
     #[fixture]
     fn mem() -> RAM {
