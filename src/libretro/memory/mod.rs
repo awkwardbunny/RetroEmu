@@ -1,7 +1,9 @@
 mod ram;
 mod rom;
+mod vram;
 
 pub use ram::RAM;
+pub use vram::VRAM;
 pub use rom::ROM;
 use std::fmt::Debug;
 

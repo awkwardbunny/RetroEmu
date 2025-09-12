@@ -16,16 +16,17 @@ pub mod machine;
 // pub use debug::Debugger;
 
 
-use clap::{Parser, Subcommand};
-
-#[derive(Parser, Debug)]
-pub struct CommandParser {
-    #[clap(subcommand)]
-    pub cmd: Command,
+pub enum DisplayCommand {
+    Write(usize, u8),
+    Redraw,
+    Exit(u8),
 }
 
-#[derive(Debug, Subcommand)]
-pub enum Command {
+pub enum EmulatorCommand {
+    Cycle,
     Step,
     Run,
+    Stop,
+    Reset,
 }
+

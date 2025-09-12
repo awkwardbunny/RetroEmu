@@ -1,4 +1,3 @@
-use retro_derive::Mnemonic;
 use crate::cpu::mos6502::AddressingMode;
 
 #[derive(Debug, PartialEq)]
@@ -15,12 +14,6 @@ pub enum Instr {
     CLC, CLD, CLI, CLV, SEC, SED, SEI,
     NOP, UNK
 }
-
-// #[derive(Mnemonic)]
-// pub enum Mnem {
-//     #[Instruction()]
-//     LDA,
-// }
 
 impl std::fmt::Display for Instr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
