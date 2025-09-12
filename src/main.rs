@@ -25,13 +25,15 @@ fn start_emulation_thread(
     gui_tx: mpsc::Sender<DisplayCommand>,
 ) {
     let (cycle_tx, cycle_rx) = mpsc::channel::<()>();
+    let (draw_tx, draw_rx) = mpsc::channel::<()>();
+    let gui2 = gui_tx.clone();
 
     thread::spawn(move || {
         let mut mach: Box<dyn Machine> = match config.machine {
             AppleIiE {
                 ref disk1,
                 ref disk2,
-                freq_khz,
+                freq,
             } => {
                 let mut x = AppleIIe::new(gui_tx);
                 if let Some(disk1) = disk1 {
@@ -41,12 +43,19 @@ fn start_emulation_thread(
                     x.load_disk1(config.get_file(disk2).expect("Failed to load disk1"));
                 }
                 thread::spawn(move || {
-                    let period = 1000000 / freq_khz;
-                    info!("Freq: {}khz", freq_khz);
+                    let period = 1000000000 / freq;
+                    info!("Freq: {}khz", freq);
                     info!("Period: {}ns", period);
                     loop {
                         sleep(Duration::from_nanos(period as u64));
                         cycle_tx.send(()).unwrap();
+                    }
+                });
+                thread::spawn(move || {
+                    info!("Video Freq: 1khz");
+                    loop {
+                        sleep(Duration::from_millis(1));
+                        draw_tx.send(()).unwrap();
                     }
                 });
                 Box::new(x)
@@ -58,8 +67,11 @@ fn start_emulation_thread(
         loop {
             while let Ok(()) = cycle_rx.try_recv() {
                 if is_running {
-                    mach.as_mut().step();
+                    mach.as_mut().cycle();
                 }
+            }
+            while let Ok(()) = draw_rx.try_recv() {
+                gui2.send(DisplayCommand::Redraw).unwrap();
             }
             while let Ok(cmd) = cmd_rx.try_recv() {
                 match cmd {
@@ -101,7 +113,10 @@ fn start_terminal_thread(
                 print!("retro> ");
                 std::io::stdout().flush().unwrap();
                 let mut input = String::new();
-                if let Ok(_) = reader.read_line(&mut input) {
+                if let Ok(n) = reader.read_line(&mut input) {
+                    if n == 0 {
+                        break;
+                    }
                     match input.trim() {
                         "continue" | "c" => {
                             is_running = true;
@@ -151,9 +166,7 @@ fn start_display_thread(gui_rx: mpsc::Receiver<DisplayCommand>) {
         while let Ok(cmd) = gui_rx.try_recv() {
             match cmd {
                 DisplayCommand::Write(addr, data) => {
-                    println!("{:x?} {:x?}", addr, data);
                     display.write_text(pixels.frame_mut(), addr, data as char);
-                    println!("AH");
                 }
                 DisplayCommand::Redraw => {
                     window.request_redraw();
@@ -175,7 +188,7 @@ fn start_display_thread(gui_rx: mpsc::Receiver<DisplayCommand>) {
                 _ => {}
             },
             Event::MainEventsCleared => {
-                window.request_redraw();
+                // window.request_redraw();
             }
             Event::RedrawRequested(_) => {
                 if let Err(err) = pixels.render() {

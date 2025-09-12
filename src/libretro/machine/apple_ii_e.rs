@@ -29,7 +29,7 @@ impl Machine for AppleIIe {
     }
 
     fn cycle(&mut self) {
-        debug!("Cycled");
+        trace!("cycle()");
         if let Some(i) = self.cpu.cycle(&mut self.memory) {
             debug!("{}", i);
         }
@@ -61,8 +61,8 @@ impl AppleIIe {
         // Monitor ROM
         mm.map(
             0xF800,
-            Box::new(ROM::new(0x800, Endian::Little, "apple2e_F8.bin")),
-            // Box::new(ROM::new(0x800, Endian::Little, "apple2e_vtest.bin")),
+            // Box::new(ROM::new(0x800, Endian::Little, "apple2e_F8.bin")),
+            Box::new(ROM::new(0x800, Endian::Little, "apple2e_vtest.bin")),
         );
 
         // 80-Column Card

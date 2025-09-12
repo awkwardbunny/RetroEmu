@@ -32,8 +32,8 @@ enum MyLogLevel {
 #[derive(Subcommand, Debug, Clone)]
 pub enum Machines {
     AppleIiE {
-        #[arg(long, value_name = "FREQ_KHZ", default_value_t = 1020)]
-        freq_khz: usize,
+        #[arg(long, value_name = "FREQ_KHZ", default_value_t = 1020000)]
+        freq: usize,
 
         #[arg(long, value_name = "DISK1")]
         disk1: Option<PathBuf>,
